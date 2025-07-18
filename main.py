@@ -1,10 +1,11 @@
-п»їfrom flask import Flask
+from flask import Flask
 import threading
 import time
 import requests
 import urllib.parse
 import re
-# ==== РќРђРЎРўР РћР™РљР ====
+import os
+# ==== НАСТРОЙКИ ====
 app = Flask(__name__)
 SKINS_TO_MONITOR = [
     {"name": "AWP | Pit Viper (Field-Tested)", "threshold": 60},
@@ -12,12 +13,14 @@ SKINS_TO_MONITOR = [
     {"name": "Tec-9 | Sandstorm (Field-Tested)", "threshold": 100},
 ]
 
-CURRENCY = 5  # 5 = СЂСѓР±Р»Рё
-CHECK_INTERVAL = 20 * 60  # РєР°Р¶РґС‹Рµ 20 РјРёРЅСѓС‚
+CURRENCY = 5  # 5 = рубли
+CHECK_INTERVAL = 20 * 60  # каждые 20 минут
+FULL_INTERVAL = 4 * 60 * 60 #каждые 4 часа
+now = time.time()
 
 # Telegram
-TELEGRAM_BOT_TOKEN = "7791511329:AAESunuCTW_K05TwIbRSjEhDseV63lrkM68"
-TELEGRAM_CHAT_ID = "1608718134"
+TELEGRAM_BOT_TOKEN = os.getenv("7791511329:AAESunuCTW_K05TwIbRSjEhDseV63lrkM68")
+TELEGRAM_CHAT_ID = os.getenv("1608718134")
 
 # ===================
 
@@ -25,12 +28,12 @@ def send_telegram_message(message: str):
    
     url = (
         f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        f"?chat_id={TELEGRAM_CHAT_ID}&text={urllib.parse.quote('Р—РђРџРЈРЎРљ')}"
+        f"?chat_id={TELEGRAM_CHAT_ID}&text={urllib.parse.quote('ЗАПУСК')}"
     )
     try:
         requests.get(url)
     except Exception as e:
-        print("РћС€РёР±РєР° РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёСЏ:", e)
+        print("Ошибка отправки сообщения:", e)
 
 def get_lowest_price(skin_name: str, currency: int = 5):
     encoded_name = urllib.parse.quote(skin_name)
@@ -44,48 +47,62 @@ def get_lowest_price(skin_name: str, currency: int = 5):
         if "lowest_price" in data and data["lowest_price"]:
             price_str = data["lowest_price"]
 
-            # Р—Р°РјРµРЅСЏРµРј Р·Р°РїСЏС‚С‹Рµ РЅР° С‚РѕС‡РєРё (РґР»СЏ 1 234,56)
+            # Заменяем запятые на точки (для 1 234,56)
             price_str = price_str.replace(",", ".")
 
-            # РЈРґР°Р»СЏРµРј РІСЃС‘, РєСЂРѕРјРµ С†РёС„СЂ Рё С‚РѕС‡РµРє
+            # Удаляем всё, кроме цифр и точек
             price_str = re.sub(r"[^\d.]", "", price_str)
 
-            # Р•СЃР»Рё С‚РѕС‡РµРє Р±РѕР»СЊС€Рµ РѕРґРЅРѕР№ вЂ” РѕСЃС‚Р°РІР»СЏРµРј С‚РѕР»СЊРєРѕ РїРµСЂРІСѓСЋ
+            # Если точек больше одной — оставляем только первую
             if price_str.count('.') > 1:
                 parts = price_str.split('.')
                 price_str = parts[0] + '.' + ''.join(parts[1:])
 
-            # РЈРґР°Р»СЏРµРј С‚РѕС‡РєСѓ РІ РєРѕРЅС†Рµ, РµСЃР»Рё РѕСЃС‚Р°Р»Р°СЃСЊ
+            # Удаляем точку в конце, если осталась
             if price_str.endswith('.'):
                 price_str = price_str[:-1]
 
             return float(price_str)
     except Exception as e:
-        print(f"[!] РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё С†РµРЅС‹ РґР»СЏ {skin_name}: {e}")
+        print(f"[!] Ошибка при получении цены для {skin_name}: {e}")
     return None
 
 @app.route("/")
 def home():
-    return "РЎРєСЂРёРїС‚ РјРѕРЅРёС‚РѕСЂРёРЅРіР° СЃРєРёРЅРѕРІ СЂР°Р±РѕС‚Р°РµС‚!"
+    return "Скрипт мониторинга скинов работает!"
 
 
 
 def monitor_prices():
-    print("рџ”Ќ Р—Р°РїСѓС‰РµРЅ РјРѕРЅРёС‚РѕСЂРёРЅРі РЅРµСЃРєРѕР»СЊРєРёС… СЃРєРёРЅРѕРІ...")
-    send_telegram_message("вњ… РўРµСЃС‚: Р±РѕС‚ СѓСЃРїРµС€РЅРѕ РїРѕРґРєР»СЋС‡С‘РЅ!")
+    print("?? Запущен мониторинг нескольких скинов...")
+    send_telegram_message("? Тест: бот успешно подключён!")
     while True:
         for skin in SKINS_TO_MONITOR:
             name = skin["name"]
             threshold = skin["threshold"]
             price = get_lowest_price(name, CURRENCY)
             if price:
-                print(f"[+] {name} вЂ” С‚РµРєСѓС‰Р°СЏ С†РµРЅР°: {price} СЂСѓР±.")
+                print(f"[+] {name} — текущая цена: {price} руб.")
                 if price > threshold:
-                    msg = f"вљ пёЏ Р¦РµРЅР° РЅР° '{name}' РІС‹С€Рµ РїРѕСЂРѕРіР°!\nРўРµРєСѓС‰Р°СЏ С†РµРЅР°: {price} СЂСѓР±. (РїРѕСЂРѕРі: {threshold} СЂСѓР±.)"
+                    msg = f"?? Цена на '{name}' выше порога!\nТекущая цена: {price} руб. (порог: {threshold} руб.)"
                     send_telegram_message(msg)
             else:
-                print(f"[-] РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ С†РµРЅСѓ РґР»СЏ: {name}")
-        print(f"вЏі РћР¶РёРґР°РЅРёРµ {CHECK_INTERVAL // 60} РјРёРЅСѓС‚ РґРѕ СЃР»РµРґСѓСЋС‰РµР№ РїСЂРѕРІРµСЂРєРё...\n")
+                print(f"[-] Не удалось получить цену для: {name}")
+        print(f"? Ожидание {CHECK_INTERVAL // 60} минут до следующей проверки...\n")
+        time.sleep(CHECK_INTERVAL)
+
+        if now - last_report_time >= FULL_INTERVAL:
+            report_lines = ["?? Текущие цены на скины:"]
+            for skin in SKINS_TO_MONITOR:
+                price = get_lowest_price(skin["name"], CURRENCY)
+                if price is not None:
+                    report_lines.append(f"{skin['name']}: {price} руб.")
+                else:
+                    report_lines.append(f"{skin['name']}: не удалось получить цену")
+            send_telegram_message("\n".join(report_lines))
+            last_report_time = now
+
+        print(f"? Ожидание {CHECK_INTERVAL // 60} минут до следующей проверки...\n")
         time.sleep(CHECK_INTERVAL)
 
 def run_monitor():
@@ -96,6 +113,7 @@ def run_monitor():
 if __name__ == "__main__":
     run_monitor()
     app.run(host="0.0.0.0", port=8000)
+
 
 
 
