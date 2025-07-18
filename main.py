@@ -17,11 +17,11 @@ SKINS_TO_MONITOR = [
 CURRENCY = 5  # 5 = рубли
 CHECK_INTERVAL = 20 * 60  # каждые 20 минут
 FULL_INTERVAL = 4 * 60 * 60 #каждые 4 часа
-now = time.time()
+
 
 # Telegram
-TELEGRAM_BOT_TOKEN = os.getenv("7791511329:AAESunuCTW_K05TwIbRSjEhDseV63lrkM68")
-TELEGRAM_CHAT_ID = os.getenv("1608718134")
+TELEGRAM_BOT_TOKEN = "7791511329:AAESunuCTW_K05TwIbRSjEhDseV63lrkM68"
+TELEGRAM_CHAT_ID = "1608718134"
 
 # ===================
 
@@ -77,7 +77,10 @@ def home():
 def monitor_prices():
     print("?? Запущен мониторинг нескольких скинов...")
     send_telegram_message("? Тест: бот успешно подключён!")
+    last_report_time = time.time()
+
     while True:
+        now = time.time()
         for skin in SKINS_TO_MONITOR:
             name = skin["name"]
             threshold = skin["threshold"]
@@ -89,8 +92,7 @@ def monitor_prices():
                     send_telegram_message(msg)
             else:
                 print(f"[-] Не удалось получить цену для: {name}")
-        print(f"? Ожидание {CHECK_INTERVAL // 60} минут до следующей проверки...\n")
-        time.sleep(CHECK_INTERVAL)
+        
 
         if now - last_report_time >= FULL_INTERVAL:
             report_lines = ["?? Текущие цены на скины:"]
