@@ -12,6 +12,7 @@ SKINS_TO_MONITOR = [
     {"name": "AWP | Pit Viper (Field-Tested)", "threshold": 60},
     {"name": "Desert Eagle | Bronze Deco (Factory New)", "threshold": 85},
     {"name": "Tec-9 | Sandstorm (Field-Tested)", "threshold": 100},
+    {"name": "SG 553 | Cyrex (Battle-Scarred)","threshold": 450},
 ]
 
 CURRENCY = 5  # 5 = рубли
